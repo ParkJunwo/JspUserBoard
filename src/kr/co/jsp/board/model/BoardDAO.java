@@ -10,6 +10,8 @@ import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
 
+import kr.co.jsp.board.commons.PageVO;
+
 public class BoardDAO implements IBoardDAO {
 
 	private DataSource ds;
@@ -57,10 +59,15 @@ public class BoardDAO implements IBoardDAO {
 	}
 
 	@Override
-	public List<BoardVO> listBoard() {
+	public List<BoardVO> listBoard(PageVO paging) {
 		List<BoardVO> boardList = new ArrayList<BoardVO>();
 		
-		String sql = "SELECT * FROM my_board ORDER BY board_id DESC";
+		String sql = "SELECT * FROM ("
+	            + "SELECT ROWNUM AS rn, board_id, writer, title, content, reg_date, hit FROM ("
+	            + "SELECT * FROM my_board ORDER BY board_id DESC)"
+	            + ")"
+	            + "WHERE rn > " + (paging.getPage()-1)*paging.getCountPerPage() + 
+	            "AND rn <= " + paging.getPage() * paging.getCountPerPage();
 		try(Connection conn = ds.getConnection();
 				PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			ResultSet rs = pstmt.executeQuery();
@@ -204,4 +211,27 @@ public class BoardDAO implements IBoardDAO {
 		}
 		
 	}
+	
+	
+	@Override
+	public int countArticles() {
+		int count = 0;
+		String sql = "SELECT COUNT(*) FROM my_board";
+		
+		try(Connection conn = ds.getConnection();
+				PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			ResultSet rs = pstmt.executeQuery();
+			if(rs.next()) {
+				count = rs.getInt("count(*)");//sql 컬럼명이 count(*)로 나옴
+			}
+			
+			
+		} catch (Exception e) {
+			// TODO: handle exception
+		}
+		
+		return count;
+	}
+	
+	
 }
